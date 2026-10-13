@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ninja Slash: Grammar Colour Battle</title>
+<style>
+:root{--cyan:#55f4ff;--pink:#ff50cf;--lime:#d7ff68;--dark:#090b22}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--dark);color:white;font-family:system-ui,Arial,sans-serif}
+button{font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#game{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 35%,#303d87 0%,#171744 42%,#090b22 100%);overflow:hidden}
+#canvas{position:absolute;width:100%;height:100%;inset:0;touch-action:none}
+#decor{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(2px);opacity:.45;animation:float 5s ease-in-out infinite alternate}
+.orb.a{width:140px;height:140px;left:-55px;top:22%;background:#04dfff;box-shadow:0 0 80px #04dfff}
+.orb.b{width:120px;height:120px;right:-45px;top:42%;background:#ff3fc8;box-shadow:0 0 70px #ff3fc8;animation-delay:-2s}
+@keyframes float{to{transform:translateY(-24px) scale(1.08)}}
+.grid{position:absolute;left:-70%;right:-70%;height:60%;bottom:-26%;transform:perspective(260px) rotateX(58deg);background-image:linear-gradient(#43e8ff32 1px,transparent 1px),linear-gradient(90deg,#43e8ff32 1px,transparent 1px);background-size:38px 38px;animation:gridmove 5s linear infinite}
+@keyframes gridmove{to{background-position:0 38px,38px 0}}
+#hud{display:none;position:absolute;z-index:3;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;justify-content:space-between;gap:8px;pointer-events:none}
+.hud{background:#080e29eF;border:1px solid #55f4ff88;border-radius:13px;padding:8px 11px;box-shadow:0 0 18px #13dfff20;font-size:11px;font-weight:800}
+.hud strong{font-size:19px;color:var(--lime)}
+#bar{height:5px;background:#263354;border-radius:9px;overflow:hidden;margin-top:5px;width:min(120px,30vw)}
+#barFill{height:100%;width:0;background:linear-gradient(90deg,#42f5ff,#d7ff68);transition:width .3s}
+#mission{color:var(--cyan);letter-spacing:1px}
+#prompt{display:none;position:absolute;z-index:4;top:78px;left:50%;transform:translateX(-50%);width:min(470px,calc(100% - 20px));padding:10px 13px;text-align:center;border:1px solid #7af5ff;border-radius:18px;background:#090e2bf2;box-shadow:0 0 30px #00dfff36}
+.tag{font-size:10px;font-weight:1000;letter-spacing:2px;color:var(--cyan)}
+#clothes{font-size:clamp(38px,9vw,58px);line-height:1.15;margin:2px}
+#clue{font-size:clamp(17px,4.5vw,22px);font-weight:1000;margin:4px 0 8px}
+#feedback{font-size:12px;font-weight:900;min-height:18px;color:var(--lime);margin-top:7px}
+#battle{display:none;position:absolute;z-index:4;bottom:12px;left:10px;right:10px;gap:8px;align-items:stretch;padding-bottom:env(safe-area-inset-bottom)}
+.gate{flex:1;min-width:0;min-height:91px;border:2px solid;border-radius:18px;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-weight:1000;text-align:center;text-shadow:0 2px 5px #0007;box-shadow:inset 0 0 22px #ffffff18,0 0 20px #0004;transition:transform .12s}
+.gate:active{transform:scale(.95)}
+.gate span{font-size:clamp(15px,4vw,20px)}
+.gate small{font-size:9px;letter-spacing:1px}
+.green{background:linear-gradient(145deg,#168d5c,#07503f);border-color:#8dffbc;box-shadow:inset 0 0 22px #73ffb526,0 0 16px #00ff8860}
+.red{background:linear-gradient(145deg,#e84c42,#7b153d);border-color:#ffaaa2;box-shadow:inset 0 0 22px #ff9b9226,0 0 16px #ff303060}
+.yellow{flex:0 0 65px;background:linear-gradient(145deg,#ffdc56,#d47b16);border-color:#fff1a0;color:#301b08;text-shadow:none}
+.yellow span{font-size:25px}.yellow small{font-size:8px}
+#hint{display:none;position:absolute;z-index:3;bottom:116px;left:50%;transform:translateX(-50%);white-space:nowrap;max-width:92%;background:#090e2be0;border:1px solid #ffffff35;border-radius:30px;padding:7px 12px;font-size:11px;text-align:center}
+.overlay{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:18px;background:#05071bb0;overflow:auto}
+.panel{width:min(480px,100%);text-align:center;padding:clamp(17px,4vw,26px);border:1px solid #65f4ff;border-radius:25px;background:linear-gradient(150deg,#0b1b42f7,#271043f7 70%,#151036f7);box-shadow:0 0 55px #08dfff30;position:relative;overflow:hidden}
+.panel:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(120deg,transparent,#ffffff08,transparent)}
+.eyebrow{font-size:10px;letter-spacing:3px;font-weight:1000;color:var(--cyan)}
+h1{font-size:clamp(36px,10vw,58px);line-height:.9;letter-spacing:-2px;margin:14px 0 10px;text-shadow:0 5px 0 #352065,0 0 22px #26dfff60}
+.pink{color:#ff61d5}.subtitle{font-weight:900;font-size:12px;letter-spacing:1px;color:#e3e2ff}
+.hero{height:150px;position:relative;display:flex;align-items:center;justify-content:center;margin:6px 0}
+.heroFruit{font-size:105px;filter:drop-shadow(0 0 20px #ff3f7c);animation:fruitbounce 1.5s ease-in-out infinite alternate;transform:rotate(-12deg)}
+.heroNinja{position:absolute;font-size:65px;right:12%;bottom:3px;filter:drop-shadow(0 0 15px #45f4ff);animation:ninjabounce 1s ease-in-out infinite alternate}
+@keyframes fruitbounce{to{transform:rotate(12deg) scale(1.08)}}
+@keyframes ninjabounce{to{transform:translateY(-9px) rotate(5deg)}}
+.mainbtn{border:0;border-radius:15px;padding:14px 24px;background:linear-gradient(100deg,#49efff,#b4a1ff 52%,#ff6ad8);color:#10112d;font-weight:1000;font-size:16px;box-shadow:0 5px 0 #5446a4,0 0 25px #49efff45;width:100%;max-width:300px}
+.mainbtn:active{transform:translateY(3px);box-shadow:0 2px 0 #5446a4}
+.info{font-size:12px;line-height:1.6;color:#d4dcff;margin:10px 0}
+.legend{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin:12px 0}
+.pill{padding:7px 10px;border-radius:9px;font-size:10px;font-weight:1000}
+#end{display:none}
+#endScore{font-size:27px;color:var(--lime);font-weight:1000;margin:15px}
+@media(max-height:650px){
+ .panel{padding:13px 17px}.hero{height:85px;margin:0}.heroFruit{font-size:68px}.heroNinja{font-size:46px}
+ h1{font-size:clamp(32px,8vw,45px);margin:9px 0}
+ .info{margin:6px 0;font-size:11px}
+ #prompt{top:65px;padding:7px 10px}
+ #clothes{font-size:39px}#clue{font-size:17px;margin:2px}
+ .gate{min-height:70px}
+ #battle{bottom:7px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+ <div id="decor"><div class="grid"></div><div class="orb a"></div><div class="orb b"></div></div>
+ <canvas id="canvas"></canvas>
+ <div id="hud">
+  <div class="hud"><span id="mission">NINJA ACADEMY</span><br>PROGRESS <div id="bar"><div id="barFill"></div></div></div>
+  <div class="hud" style="text-align:right">SCORE & LIVES<br><strong id="score">0</strong> <span id="lives" style="color:#ff507e;font-size:15px">♥♥♥</span><br><span id="round">ROUND 1/20</span></div>
+ </div>
+ <div id="prompt">
+  <div class="tag">⚡ GRAMMAR BATTLE ⚡</div>
+  <div id="clothes">👕</div>
+  <div id="clue">An orange shirt</div>
+  <div class="tag">CHOOSE THE CORRECT GATE!</div>
+  <div id="feedback">One item or more than one?</div>
+ </div>
+ <div id="hint">SWIPE to slash fruit!</div>
+ <div id="battle">
+  <button class="gate green" id="thisBtn"><span id="thisLabel">🟢 THIS IS A</span><small>ONE ITEM</small></button>
+  <button class="gate red" id="theseBtn"><span>🔴 THESE ARE</span><small>MORE THAN ONE</small></button>
+  <button class="gate yellow" id="bonusBtn"><span>⚡</span><small>BONUS</small></button>
+ </div>
+ <div class="overlay" id="start">
+  <div class="panel">
+   <div class="eyebrow">🥷 NINJA ACADEMY PRESENTS</div>
+   <h1>NINJA <span class="pink">SLASH!</span></h1>
+   <div class="subtitle">SLASH FRUIT. FIGHT GRAMMAR.</div>
+   <div class="hero"><div class="heroFruit">🍉</div><div class="heroNinja">🥷</div></div>
+   <div class="legend">
+    <div class="pill" style="background:#168d5c">🟢 THIS IS A / AN</div>
+    <div class="pill" style="background:#b62b45">🔴 THESE ARE</div>
+    <div class="pill" style="background:#ffdc56;color:#301b08">🟡 BONUS</div>
+   </div>
+   <p class="info">Slash the flying watermelon to reveal clothes.<br>Then race to the correct grammar gate!</p>
+   <button class="mainbtn" id="play">▶ PLAY NOW</button>
+   <p class="info">20 rounds • 3 Lives • Audio effects</p>
+  </div>
+ </div>
+ <div class="overlay" id="end">
+  <div class="panel">
+   <div class="eyebrow">🏆 NINJA MISSION REPORT</div>
+   <h1 id="endTitle">NINJA <span class="pink">MASTER!</span></h1>
+   <div id="endScore">0 / 20</div>
+   <p class="info" id="endMessage"></p>
+   <button class="mainbtn" id="again">↻ PLAY AGAIN</button>
+  </div>
+ </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const canvas=$('canvas'),ctx=canvas.getContext('2d');
+let W=innerWidth,H=innerHeight,dpr=1;
+let running=false,asking=false,round=0,score=0,combo=0,bonus=0,lives=3;
+let fruits=[],particles=[],slashes=[],current=null,answerLock=false;
+let lastTime=0,spawnTimer=0,shake=0;
+let pointerDown=false,lastPoint=null,trail=[];
+
+// Audio Context for Sound Effects
+let audioCtx=null;
+function initAudio(){
+ if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+ if(audioCtx.state==='suspended')audioCtx.resume();
+}
+function playSound(type){
+ try{
+  initAudio();
+  const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  osc.connect(gain);gain.connect(audioCtx.destination);
+  const now=audioCtx.currentTime;
+  if(type==='slash'){
+   osc.type='triangle';osc.frequency.setValueAtTime(400,now);osc.frequency.exponentialRampToValueAtTime(120,now+0.12);
+   gain.gain.setValueAtTime(0.3,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.12);
+   osc.start(now);osc.stop(now+0.12);
+  }else if(type==='correct'){
+   osc.type='sine';osc.frequency.setValueAtTime(523.25,now);osc.frequency.setValueAtTime(659.25,now+0.08);osc.frequency.setValueAtTime(783.99,now+0.16);
+   gain.gain.setValueAtTime(0.25,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.3);
+   osc.start(now);osc.stop(now+0.3);
+  }else if(type==='wrong'){
+   osc.type='sawtooth';osc.frequency.setValueAtTime(220,now);osc.frequency.setValueAtTime(160,now+0.15);
+   gain.gain.setValueAtTime(0.3,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.3);
+   osc.start(now);osc.stop(now+0.3);
+  }else if(type==='bonus'){
+   osc.type='square';osc.frequency.setValueAtTime(600,now);osc.frequency.exponentialRampToValueAtTime(900,now+0.2);
+   gain.gain.setValueAtTime(0.2,now);gain.gain.exponentialRampToValueAtTime(0.01,now+0.2);
+   osc.start(now);osc.stop(now+0.2);
+  }
+ }catch(e){}
+}
+
+const singles=[
+ {word:'shirt',emoji:'👕'},{word:'T-shirt',emoji:'👕'},
+ {word:'skirt',emoji:'👗'},{word:'dress',emoji:'👗'},
+ {word:'hat',emoji:'🧢'},{word:'jacket',emoji:'🧥'},
+ {word:'sock',emoji:'🧦'},{word:'shoe',emoji:'👟'},
+ {word:'scarf',emoji:'🧣'},{word:'sweater',emoji:'🧶'}
+];
+const plurals=[
+ {word:'trousers',emoji:'👖'},{word:'shorts',emoji:'🩳'},
+ {word:'jeans',emoji:'👖'},{word:'socks',emoji:'🧦'},
+ {word:'shoes',emoji:'👟'},{word:'gloves',emoji:'🧤'},
+ {word:'boots',emoji:'🥾'},{word:'sunglasses',emoji:'🕶️'}
+];
+const colours=[
+ {name:'red',hex:'#ff4c60',emoji:'🔴'},
+ {name:'blue',hex:'#48baff',emoji:'🔵'},
+ {name:'yellow',hex:'#ffdf52',emoji:'🟡'},
+ {name:'green',hex:'#54ee9c',emoji:'🟢'},
+ {name:'purple',hex:'#bd8aff',emoji:'🟣'},
+ {name:'orange',hex:'#ff9a48',emoji:'🟠'},
+ {name:'pink',hex:'#ff83d5',emoji:'🩷'},
+ {name:'black',hex:'#b6c3dd',emoji:'⚫'}
+];
+
+function resize(){
+ W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,2);
+ canvas.width=Math.floor(W*dpr);canvas.height=Math.floor(H*dpr);
+ canvas.style.width=W+'px';canvas.style.height=H+'px';
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+addEventListener('resize',resize);resize();
+
+function rand(a,b){return a+Math.random()*(b-a)}
+function choose(a){return a[Math.floor(Math.random()*a.length)]}
+function isPlural(item){return plurals.some(x=>x.word===item.word)}
+
+function getArticle(colorName){
+ return ['orange'].includes(colorName.toLowerCase()) ? 'an' : 'a';
+}
+
+function sentence(item,color){
+ if(isPlural(item)){
+  return `These are ${color.name} ${item.word}.`;
+ } else {
+  const art = getArticle(color.name);
+  return `This is ${art} ${color.name} ${item.word}.`;
+ }
+}
+
+function newQuestion(){
+ const isPluralRound=Math.random()<0.5;
+ const item=isPluralRound?choose(plurals):choose(singles);
+ const color=choose(colours);
+ return {item,color,correct:isPlural(item)?'these':'this',full:''};
+}
+
+function launchFruit(){
+ const watermelon=Math.random()<.78;
+ const r=rand(23,34);
+ fruits.push({
+  x:rand(r+10,W-r-10),y:H+35,vx:rand(-100,100),vy:rand(-H*.93,-H*.72),
+  r,emoji:watermelon?'🍉':choose(['🍓','🍊','🍍','🍎','🥝']),
+  type:watermelon?'watermelon':'fruit',rot:rand(-.6,.6),vr:rand(-2,2),dead:false
+ });
+}
+
+function burst(x,y,color,n=18){
+ for(let i=0;i<n;i++){
+  const a=Math.random()*Math.PI*2,s=rand(60,280);
+  particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.35,.9),max:.9,size:rand(2,7),color});
+ }
+}
+
+function makeRound(){
+ asking=false;answerLock=false;current=null;
+ $('prompt').style.display='none';$('battle').style.display='none';
+ $('hint').textContent='SWIPE to slash fruit!';$('hint').style.display='block';
+ fruits=[];spawnTimer=.1;
+}
+
+function startGame(){
+ round=0;score=0;combo=0;bonus=0;lives=3;fruits=[];particles=[];slashes=[];
+ updateHUD();
+ $('start').style.display='none';$('end').style.display='none';$('hud').style.display='flex';running=true;makeRound();
+}
+
+function updateHUD(){
+ $('score').textContent=score;
+ $('lives').textContent='♥'.repeat(lives)+'♡'.repeat(3-lives);
+ $('round').textContent='ROUND '+Math.min(round+1,20)+'/20';$('barFill').style.width=(round/20*100)+'%';
+}
+
+function showQuestion(){
+ if(asking||!running)return;
+ asking=true;answerLock=false;current=newQuestion();
+ 
+ const art = getArticle(current.color.name);
+ $('thisLabel.textContent') // placeholder logic check$('thisBtn').innerHTML=`<span>🟢 THIS IS ${art.toUpperCase()}</span><small>ONE ITEM</small>`;
+
+ $('clothes').textContent=current.item.emoji+' '+current.color.emoji;
+ $('clue').textContent=`A${art==='an'?'n':''} ${current.color.name} ${current.item.word}`.replace(/^A /,''); // handles "An orange..." properly
+ // Alternatively explicit:
+ $('clue').textContent = isPlural(current.item) 
+  ? `${current.color.name} ${current.item.word}` 
+  : `${art.charAt(0).toUpperCase()+art.slice(1)} ${current.color.name} ${current.item.word}`;
+
+ $('feedback').textContent='One item or more than one?';
+ $('prompt').style.display='block';$('battle').style.display='flex';
+ $('hint').textContent='Choose the green or red gate!';$('hint').style.display='block';
+}
+
+function answer(kind){
+ if(!running||!asking||answerLock)return;
+ answerLock=true;
+ const right=kind===current.correct;
+ if(right){
+  score+=10+Math.min(combo,5)*2;combo++;
+  playSound('correct');
+  $('feedback').textContent=combo>=3?'🔥 AMAZING COMBO!':'✓ PERFECT! +'+(10+Math.min(combo-1,5)*2);
+  $('feedback').style.color='#a0ffd1';burst(W/2,H*.52,'#65ffb5',30);
+ }else{
+  combo=0;
+  lives=Math.max(0,lives-1);
+  playSound('wrong');
+  const art = getArticle(current.color.name);
+  $('feedback').textContent='Correct gate: '+(current.correct==='this'?`THIS IS ${art.toUpperCase()}`:'THESE ARE');
+  $('feedback').style.color='#ff9eb7';burst(W/2,H*.52,'#ff507e',15);
+ }
+ current.full=sentence(current.item,current.color);
+ $('clue').textContent=current.full;
+ updateHUD();
+ round++;
+ $('mission').textContent=combo>=3?'🔥 COMBO x'+combo:'NINJA ACADEMY';
+ 
+ setTimeout(()=>{
+  if(!running)return;
+  if(round>=20||lives<=0)finish();
+  else makeRound();
+ },right?1150:1900);
+}
+
+$('thisBtn').onclick=()=>answer('this');
+$('theseBtn').onclick=()=>answer('these');$('bonusBtn').onclick=()=>{
+ if(!running||!asking||answerLock)return;
+ if(bonus>0){
+  bonus--;score+=5;playSound('bonus');updateHUD();
+  $('feedback').textContent='⚡ BONUS POWER! +5';burst(W/2,H*.45,'#ffdf52',25);
+ }else{
+  $('feedback').textContent='Slash the golden bonus fruit first!';
+ }
+};
+
+function finish(){
+ running=false;asking=false;
+ $('hud').style.display='none';$('prompt').style.display='none';$('battle').style.display='none';$('hint').style.display='none';$('end').style.display='flex';$('endScore').textContent=score+' POINTS';$('endTitle').innerHTML=lives<=0?'GAME <span class="pink">OVER!</span>':(score>=180?'NINJA <span class="pink">MASTER!</span>':'MISSION <span class="pink">COMPLETE!</span>');
+ $('endMessage').textContent=lives<=0?'You ran out of lives! Remember: Use "These are" for plural items like shoes, socks, trousers, and shorts.':(score>=150?'Fantastic work! You are a grammar ninja!':'Great effort! Remember: "This is a/an" for one item. "These are" for plural items.');
+}
+
+$('play').onclick=startGame;$('again').onclick=startGame;
+
+function point(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+canvas.addEventListener('pointerdown',e=>{
+ if(!running||asking)return;
+ pointerDown=true;lastPoint=point(e);trail.push({...lastPoint,life:.22});
+ try{canvas.setPointerCapture(e.pointerId)}catch(_){}
+});
+canvas.addEventListener('pointermove',e=>{
+ if(!pointerDown||!running||asking)return;
+ const p=point(e);trail.push({...p,life:.22});
+ if(lastPoint){
+  slashes.push({x1:lastPoint.x,y1:lastPoint.y,x2:p.x,y2:p.y,life:.16});
+  for(const f of fruits){
+   if(f.dead)continue;
+   const d=distToSegment(f.x,f.y,lastPoint.x,lastPoint.y,p.x,p.y);
+   if(d<f.r+8){
+    f.dead=true;playSound('slash');
+    burst(f.x,f.y,f.type==='watermelon'?'#ff4f83':'#ffdf52',22);
+    if(f.type==='watermelon'){showQuestion();shake=5;break}
+    else{score+=2;bonus++;updateHUD();burst(f.x,f.y,'#ffdf52',12)}
+   }
+  }
+ }
+ lastPoint=p;
+});
+function endPointer(){pointerDown=false;lastPoint=null}
+canvas.addEventListener('pointerup',endPointer);canvas.addEventListener('pointercancel',endPointer);
+
+function distToSegment(px,py,x1,y1,x2,y2){
+ const dx=x2-x1,dy=y2-y1,l=dx*dx+dy*dy;
+ if(!l)return Math.hypot(px-x1,py-y1);
+ const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l));
+ return Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
+}
+
+function roundedRect(x,y,w,h,r){
+ ctx.beginPath();ctx.roundRect(x,y,w,h,r);
+}
+
+function drawBackground(t){
+ const g=ctx.createLinearGradient(0,0,W,H);
+ g.addColorStop(0,'#0b1640');g.addColorStop(.55,'#171039');g.addColorStop(1,'#080b20');
+ ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ for(let i=0;i<35;i++){
+  const x=(i*127.7+Math.sin(t*.0004+i)*28)%W;
+  const y=(i*79.3+t*.012*(i%3+1))%(H+20);
+  ctx.globalAlpha=.15+(i%4)*.1;ctx.fillStyle=i%2?'#51efff':'#ff63d7';
+  ctx.beginPath();ctx.arc(x,y,i%3+1,0,Math.PI*2);ctx.fill();
+ }
+ ctx.globalAlpha=1;
+ ctx.strokeStyle='#43e8ff18';ctx.lineWidth=1;
+ const horizon=H*.65;
+ for(let i=0;i<12;i++){
+  const y=horizon+Math.pow(i/11,2)*(H-horizon+100);
+  ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+ }
+ for(let i=-10;i<=10;i++){
+  ctx.beginPath();ctx.moveTo(W/2+i*5,horizon);ctx.lineTo(W/2+i*W*.09,H);ctx.stroke();
+ }
+}
+
+function drawFruit(f){
+ ctx.save();ctx.translate(f.x,f.y);ctx.rotate(f.rot);
+ ctx.shadowColor=f.type==='watermelon'?'#ff3f83':'#ffd84d';ctx.shadowBlur=18;
+ ctx.font=`${f.r*2.25}px "Apple Color Emoji","Segoe UI Emoji",sans-serif`;
+ ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(f.emoji,0,0);
+ ctx.restore();
+}
+
+function drawParticles(dt){
+ for(let i=particles.length-1;i>=0;i--){
+  const p=particles[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=250*dt;
+  if(p.life<=0){particles.splice(i,1);continue}
+  ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.color;
+  ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+ }
+ ctx.globalAlpha=1;
+}
+
+function drawTrail(dt){
+ for(let i=slashes.length-1;i>=0;i--){
+  const s=slashes[i];s.life-=dt;if(s.life<=0){slashes.splice(i,1);continue}
+  ctx.globalAlpha=s.life/.16;ctx.lineWidth=6;ctx.lineCap='round';
+  ctx.strokeStyle='#7af8ff';ctx.shadowColor='#ff53d5';ctx.shadowBlur=16;
+  ctx.beginPath();ct
